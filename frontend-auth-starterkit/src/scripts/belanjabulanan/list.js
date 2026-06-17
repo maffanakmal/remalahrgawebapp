@@ -34,15 +34,7 @@ function initBelanjaBulananDataTable() {
         withCredentials: true,
       },
 
-      dataSrc(json) {
-        console.log("DATATABLE RESPONSE", json);
-
-        return json.data || [];
-      },
-
       error(xhr) {
-        console.error("DATATABLE AJAX ERROR", xhr);
-
         tableLoading.innerHTML = `
             <div class="text-red-500 py-6">
               Gagal memuat data.

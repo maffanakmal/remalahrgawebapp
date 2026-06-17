@@ -26,7 +26,7 @@ function initInventoryKendaraanDataTable() {
     responsive: true,
 
     ajax: {
-      url: "http://localhost:3000/api/inventorykendaraan/ga/reporting",
+      url: "/api/inventorykendaraan/ga/reporting",
 
       type: "GET",
 
@@ -34,21 +34,7 @@ function initInventoryKendaraanDataTable() {
         withCredentials: true,
       },
 
-      data(d) {
-        console.log("REQUEST", structuredClone(d));
-
-        return d;
-      },
-
-      dataSrc(json) {
-        console.log("DATATABLE RESPONSE", json);
-
-        return json.data || [];
-      },
-
       error(xhr) {
-        console.error("DATATABLE AJAX ERROR", xhr);
-
         tableLoading.innerHTML = `
             <div class="text-red-500 py-6">
               Gagal memuat data inventory kendaraan.
