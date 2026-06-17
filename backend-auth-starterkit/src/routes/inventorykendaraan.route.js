@@ -6,7 +6,7 @@ import {
   getReportingById,
   getReportingByPlateNumber,
   createReportingKendaraan,
-} from '../controllers/inventoryKendaraan.controller.js';
+} from '../controllers/inventorykendaraan.controller.js';
 import { authenticate, authorize } from '../middleware/index.js';
 
 const router = express.Router();
