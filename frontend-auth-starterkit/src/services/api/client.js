@@ -1,4 +1,8 @@
-const BASE_URL = import.meta.env.PUBLIC_BACKEND_URL ?? "https://apiremalahrga.vercel.app";
+const isServer = typeof window === "undefined";
+
+const BASE_URL = isServer
+  ? (import.meta.env.PUBLIC_BACKEND_URL ?? "https://apiremalahrga.vercel.app")
+  : "";
 
 let isRefreshing = false;
 let refreshPromise = null;
