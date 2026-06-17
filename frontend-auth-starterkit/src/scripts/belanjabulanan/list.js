@@ -26,7 +26,7 @@ function initBelanjaBulananDataTable() {
     responsive: true,
 
     ajax: {
-      url: `${import.meta.env.PUBLIC_BACKEND_URL.replace(/\/$/, '')}/api/belanjabulanan/ga/transactions`,
+      url: `/api/belanjabulanan/ga/transactions`,
       
       type: "GET",
 
