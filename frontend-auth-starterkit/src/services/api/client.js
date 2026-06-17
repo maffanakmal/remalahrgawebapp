@@ -1,4 +1,4 @@
-const BASE_URL = import.meta.env.PUBLIC_BACKEND_URL ?? "http://localhost:3000";
+const BASE_URL = import.meta.env.PUBLIC_BACKEND_URL ?? "https://apiremalahrga.vercel.app";
 
 let isRefreshing = false;
 let refreshPromise = null;
