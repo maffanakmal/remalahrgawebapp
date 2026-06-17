@@ -1,0 +1,21 @@
+---
+import SideBarNav from './SideBarNav.astro';
+---
+
+<!-- Overlay mobile -->
+<div
+  class="fixed inset-0 bg-black/50 z-30 hidden"
+  id="sidebarOverlay"
+></div>
+
+<nav
+  class="fixed left-0 top-0 h-full w-64 bg-white border-r border-gray-200 z-40 transition-transform duration-300"
+  id="sidebar"
+>
+  <div class="flex items-center gap-3 px-4 h-16 border-b border-gray-100">
+    <img src="/images/logo_ra.png" alt="Logo" class="w-8 h-8 object-contain" />
+    <span class="font-semibold text-gray-800 text-sm">HRGA</span>
+  </div>
+
+  <SideBarNav />
+</nav>

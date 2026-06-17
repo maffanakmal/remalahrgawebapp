@@ -1,0 +1,311 @@
+---
+import DashboardLayout from "../../../../layouts/DashboardLayout.astro";
+import AlertCard from "../../../../components/ui/AlertCard.astro";
+import { ROUTES } from "../../../../constants/routes";
+
+import { belanjaBulananApi } from "../../../../services/api/belanjabulanan.api";
+import { formatDate } from "../../../../helpers/dom";
+
+const { id } = Astro.params;
+const cookie = Astro.request.headers.get("cookie") ?? "";
+
+// Fetch paralel ke backend Express dengan safety catch
+let transactionRes = null;
+let stocksRes = null;
+
+try {
+  [transactionRes, stocksRes] = await Promise.all([
+    belanjaBulananApi.ga.getTransactionById(id, { serverCookie: cookie }),
+    belanjaBulananApi.ga.getAllStocks({}, { serverCookie: cookie }),
+  ]);
+} catch (error) {
+  console.error("Astro Server Fetch Error:", error);
+}
+
+const transaction = transactionRes?.data ?? null;
+const stocks = stocksRes?.data ?? [];
+
+const stockMap = Object.fromEntries(
+  Array.isArray(stocks)
+    ? stocks.map((s) => [
+        s.stock_id,
+        {
+          product_name: s.product_name,
+          location_name: s.location_name,
+          current_stock: s.current_stock,
+          unit: s.unit,
+        },
+      ])
+    : []
+);
+
+// Resolved data siap pakai di template HTML Astro
+const detail = transaction
+  ? {
+      ...transaction,
+      created_at: transaction.created_at ? formatDate(transaction.created_at) : "-",
+      product_name: transaction.product_name || stockMap[transaction.stock_id]?.product_name || transaction.stock_id || "-",
+      current_stock: transaction.current_stock ?? stockMap[transaction.stock_id]?.current_stock ?? "-",
+      unit: stockMap[transaction.stock_id]?.unit || transaction.unit || "-",
+      location_name: transaction.location_name || stockMap[transaction.stock_id]?.location_name || "-",
+    }
+  : null;
+
+// Mengamankan jalur kembali (fallback ke string jika route children bermasalah)
+const backRoute = ROUTES.FormPengajuan?.children?.BelanjaBulananCreate?.path?.replace('/create', '') || '/ga/belanjabulanan';
+---
+
+<DashboardLayout title="Detail Belanja Bulanan">
+  <AlertCard />
+
+  <div class="bg-white rounded-xl border border-gray-200">
+    <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="w-8 h-8 bg-blue-50 rounded-lg flex items-center justify-center">
+          <i class="fas fa-shopping-cart text-blue-600 text-sm"></i>
+        </div>
+        <h2 class="text-sm font-semibold text-gray-800">
+          Detail Belanja Bulanan
+        </h2>
+      </div>
+      <div class="p-2 rounded-md hover:bg-gray-100 transition-all">
+        <a
+          href={backRoute} 
+          class="text-gray-600 hover:text-gray-700 font-semibold transition-all"
+        >
+          <i class="fa-solid fa-arrow-left"></i>
+        </a>
+      </div>
+    </div>
+
+    <div id="state-content" class="flex p-6 flex-col gap-6" data-trx-id={id}>
+      {
+        !detail ? (
+          <div class="py-8 text-center">
+            <p class="text-sm text-red-500 font-medium">Data transaksi tidak ditemukan atau gagal dimuat.</p>
+          </div>
+        ) : (
+          <>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div class="bg-gray-50 rounded-lg px-4 py-3 border border-gray-200">
+                <p class="text-xs text-gray-500 mb-1">Transaction ID</p>
+                <p class="text-sm font-semibold text-gray-800">
+                  {detail.transaction_id}
+                </p>
+              </div>
+              <div class="bg-gray-50 rounded-lg px-4 py-3 border border-gray-200">
+                <p class="text-xs text-gray-500 mb-1">Status</p>
+                <span class="text-sm font-semibold text-gray-800">
+                  {detail.status_request}
+                </span>
+              </div>
+            </div>
+
+            <div class="border border-gray-200 rounded-xl overflow-hidden">
+              <div class="px-4 py-3 bg-gray-50 border-b border-gray-100">
+                <p class="text-sm font-semibold text-gray-700">
+                  Informasi Produk
+                </p>
+              </div>
+              <table class="w-full text-sm">
+                <tbody>
+                  <tr class="border-b border-gray-100">
+                    <td class="px-4 py-3 text-gray-500 w-2/5">Stock ID</td>
+                    <td class="px-4 py-3 text-gray-800">
+                      {detail.stock_id ?? "- (Input Manual)"}
+                    </td>
+                  </tr>
+                  <tr class="border-b border-gray-100">
+                    <td class="px-4 py-3 text-gray-500">Nama Produk</td>
+                    <td class="px-4 py-3 text-gray-800 font-semibold">
+                      {detail.product_name}
+                    </td>
+                  </tr>
+                  <tr class="border-b border-gray-100">
+                    <td class="px-4 py-3 text-gray-500">Lokasi</td>
+                    <td class="px-4 py-3 text-gray-800">
+                      {detail.location_name}
+                    </td>
+                  </tr>
+                  <tr class="border-b border-gray-100">
+                    <td class="px-4 py-3 text-gray-500">Kuantitas Diminta</td>
+                    <td class="px-4 py-3 text-gray-800 font-bold text-blue-600">
+                      {detail.quantity} {detail.unit}
+                    </td>
+                  </tr>
+                  <tr>
+                    <td class="px-4 py-3 text-gray-500">Stok Saat Ini (Gudang)</td>
+                    <td class="px-4 py-3 text-gray-800">
+                      {detail.current_stock}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </>
+        )
+      }
+
+      <div class="border border-gray-200 rounded-xl overflow-hidden">
+        <div class="px-4 py-3 bg-gray-50 border-b border-gray-100">
+          <p class="text-sm font-semibold text-gray-700">Persetujuan Koordinator / GA</p>
+        </div>
+        <div class="p-4 flex flex-col gap-4">
+          <div class="flex gap-3">
+            <label
+              id="opt-accept"
+              class="flex-1 flex items-center gap-3 px-4 py-3 rounded-lg border border-green-200 bg-green-50/30 cursor-pointer transition-all"
+            >
+              <input
+                type="radio"
+                name="decision"
+                value="Approved"
+                checked
+                class="accent-green-600"
+              />
+              <div>
+                <p class="text-sm font-semibold text-green-700">Setujui</p>
+                <p class="text-xs text-gray-600">Permintaan diterima</p>
+              </div>
+            </label>
+
+            <label
+              id="opt-reject"
+              class="flex-1 flex items-center gap-3 px-4 py-3 rounded-lg border border-gray-200 cursor-pointer transition-all"
+            >
+              <input
+                type="radio"
+                name="decision"
+                value="Rejected"
+                class="accent-red-600"
+              />
+              <div>
+                <p class="text-sm font-semibold text-gray-700">Tolak</p>
+                <p class="text-xs text-gray-600">Permintaan ditolak</p>
+              </div>
+            </label>
+          </div>
+
+          <div id="reject-reason-wrapper" class="hidden flex-col gap-2">
+            <label for="reject-reason" class="block text-sm font-medium text-gray-700 mb-1.5">
+              Alasan Penolakan <span class="text-red-500">*</span>
+            </label>
+            <textarea
+              id="reject-reason"
+              rows="3"
+              placeholder="Jelaskan alasan penolakan secara jelas..."
+              class="w-full py-2.5 px-3 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+            ></textarea>
+            <p id="reject-reason-error" class="hidden text-xs text-red-500">
+              Alasan penolakan wajib diisi.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div class="flex justify-end gap-2 pt-1">
+        <button
+          id="btn-cancel"
+          class="flex items-center gap-2 px-5 py-2 bg-gray-600 text-white text-sm font-medium rounded-lg hover:bg-gray-700 transition-all"
+        >
+          Batal
+        </button>
+        <button
+          id="btn-submit"
+          class="flex items-center gap-2 px-5 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+          disabled={!detail ? true : undefined}
+        >
+          Simpan
+        </button>
+      </div>
+    </div>
+  </div>
+</DashboardLayout>
+
+<script>
+  function setupDecisionToggle() {
+    const optAccept = document.getElementById("opt-accept");
+    const optReject = document.getElementById("opt-reject");
+    const rejectWrapper = document.getElementById("reject-reason-wrapper");
+    const radios = document.querySelectorAll('input[name="decision"]');
+
+    if (!optAccept || !optReject || !rejectWrapper) return;
+
+    radios.forEach((r) => {
+      r.addEventListener("change", (e) => {
+        const val = (e.target as HTMLInputElement).value;
+        if (val === "Rejected") {
+          rejectWrapper.classList.remove("hidden");
+          rejectWrapper.classList.add("flex");
+          optReject.className = "flex-1 flex items-center gap-3 px-4 py-3 rounded-lg border border-red-200 bg-red-50/30 cursor-pointer transition-all";
+          optAccept.className = "flex-1 flex items-center gap-3 px-4 py-3 rounded-lg border border-gray-200 cursor-pointer transition-all";
+        } else {
+          rejectWrapper.classList.remove("flex");
+          rejectWrapper.classList.add("hidden");
+          optAccept.className = "flex-1 flex items-center gap-3 px-4 py-3 rounded-lg border border-green-200 bg-green-50/30 cursor-pointer transition-all";
+          optReject.className = "flex-1 flex items-center gap-3 px-4 py-3 rounded-lg border border-gray-200 cursor-pointer transition-all";
+        }
+      });
+    });
+  }
+
+  function setupSubmitApproval() {
+    const btnSubmit = document.getElementById("btn-submit") as HTMLButtonElement | null;
+    const contentWrapper = document.getElementById("state-content");
+
+    if (!btnSubmit || !contentWrapper) return;
+
+    btnSubmit.addEventListener("click", async () => {
+      const transactionId = contentWrapper.dataset.trxId;
+      if (!transactionId) return;
+
+      const selectedStatus = (document.querySelector('input[name="decision"]:checked') as HTMLInputElement)?.value;
+      const rejectReason = (document.getElementById("reject-reason") as HTMLInputElement)?.value?.trim();
+      const errorText = document.getElementById("reject-reason-error");
+
+      if (selectedStatus === "Rejected" && !rejectReason) {
+        errorText?.classList.remove("hidden");
+        return;
+      }
+      errorText?.classList.add("hidden");
+
+      // Set loading state
+      btnSubmit.disabled = true;
+      btnSubmit.innerText = "Memproses...";
+
+      try {
+        const response = await fetch(`/api/ga/belanjabulanan/${transactionId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            status_request: selectedStatus,
+            notes: selectedStatus === "Rejected" ? rejectReason : ""
+          })
+        });
+
+        const result = await response.json();
+
+        if (response.ok && result.success) {
+          window.location.href = "/ga/belanjabulanan?success=true";
+        } else {
+          alert(result.message || "Gagal memperbarui status keputusan.");
+          btnSubmit.disabled = false;
+          btnSubmit.innerText = "Simpan"; // Sinkron dengan label tombol awal
+        }
+      } catch (err) {
+        console.error("Error approval request:", err);
+        alert("Terjadi kesalahan koneksi server.");
+        btnSubmit.disabled = false;
+        btnSubmit.innerText = "Simpan"; // Sinkron dengan label tombol awal
+      }
+    });
+
+    document.getElementById("btn-cancel")?.addEventListener("click", () => {
+      window.history.back();
+    });
+  }
+
+  // Jalankan inisialisasi saat script dimuat
+  setupDecisionToggle();
+  setupSubmitApproval();
+</script>

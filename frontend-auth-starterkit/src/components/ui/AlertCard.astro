@@ -1,0 +1,278 @@
+---
+
+---
+
+<div
+  id="alert-overlay"
+  class="fixed inset-0 z-[9999] hidden flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 opacity-0 transition-opacity duration-300"
+>
+  <div
+    id="alert-card"
+    class="w-full max-w-md bg-white rounded-xl shadow-2xl scale-95 opacity-0 transition-all duration-300"
+  >
+    <div class="p-6">
+      <div class="flex items-center gap-4 mb-4">
+        <div
+          id="alert-icon-bg"
+          class="w-12 h-12 rounded-full flex items-center justify-center"
+        >
+          <i id="alert-icon" class="text-xl"></i>
+        </div>
+
+        <h3 id="alert-title" class="text-xl font-semibold text-gray-900"></h3>
+      </div>
+
+      <p id="alert-message" class="text-gray-600 leading-relaxed mb-6"></p>
+
+      <div class="flex justify-end gap-2">
+        <button
+          id="alert-cancel-btn"
+          class="hidden px-4 py-2 rounded-md bg-gray-100 text-gray-700 hover:bg-gray-200 transition"
+        >
+          Batal
+        </button>
+
+        <button
+          id="alert-confirm-btn"
+          class="px-4 py-2 rounded-md text-white transition"
+        >
+          OK
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const THEMES = {
+    success: {
+      bg: "bg-emerald-50",
+      text: "text-emerald-700",
+      icon: "fa-circle-check",
+      iconColor: "text-emerald-500",
+      button: "bg-emerald-500",
+    },
+
+    error: {
+      bg: "bg-rose-50",
+      text: "text-rose-700",
+      icon: "fa-circle-xmark",
+      iconColor: "text-rose-500",
+      button: "bg-rose-500",
+    },
+
+    warning: {
+      bg: "bg-amber-50",
+      text: "text-amber-700",
+      icon: "fa-triangle-exclamation",
+      iconColor: "text-amber-500",
+      button: "bg-amber-500",
+    },
+
+    info: {
+      bg: "bg-blue-50",
+      text: "text-blue-700",
+      icon: "fa-circle-info",
+      iconColor: "text-blue-500",
+      button: "bg-blue-500",
+    },
+  };
+
+  let callbackEventId = null;
+  let isConfirmDialog = false;
+
+  function getElements() {
+    return {
+      overlay: document.getElementById("alert-overlay"),
+      card: document.getElementById("alert-card"),
+
+      title: document.getElementById("alert-title"),
+      message: document.getElementById("alert-message"),
+
+      iconBg: document.getElementById("alert-icon-bg"),
+      icon: document.getElementById("alert-icon"),
+
+      confirmBtn: document.getElementById("alert-confirm-btn"),
+      cancelBtn: document.getElementById("alert-cancel-btn"),
+    };
+  }
+
+  function show(data) {
+    const {
+      overlay,
+      card,
+      title,
+      message,
+      iconBg,
+      icon,
+      confirmBtn,
+      cancelBtn,
+    } = getElements();
+
+    if (
+      !overlay ||
+      !card ||
+      !title ||
+      !message ||
+      !iconBg ||
+      !icon ||
+      !confirmBtn ||
+      !cancelBtn
+    ) {
+      return;
+    }
+
+    const theme = THEMES[data.type] ?? THEMES.info;
+
+    callbackEventId = data.callbackEventId ?? null;
+    isConfirmDialog = data.showCancel ?? false;
+
+    title.textContent = data.title ?? "";
+    message.textContent = data.message ?? "";
+
+    confirmBtn.textContent =
+      data.confirmText ?? "OK";
+
+    cancelBtn.textContent =
+      data.cancelText ?? "Batal";
+
+    iconBg.className =
+      `w-12 h-12 rounded-full flex items-center justify-center ${theme.bg}`;
+
+    icon.className =
+      `fas ${theme.icon} ${theme.iconColor} text-xl`;
+
+    confirmBtn.className =
+      `px-4 py-2 rounded-md text-white transition hover:brightness-110 ${theme.button}`;
+
+    if (isConfirmDialog) {
+      cancelBtn.classList.remove("hidden");
+    } else {
+      cancelBtn.classList.add("hidden");
+    }
+
+    overlay.classList.remove("hidden");
+
+    requestAnimationFrame(() => {
+      overlay.classList.remove("opacity-0");
+
+      card.classList.remove(
+        "scale-95",
+        "opacity-0"
+      );
+
+      card.classList.add(
+        "scale-100",
+        "opacity-100"
+      );
+    });
+
+    if (
+      !isConfirmDialog &&
+      data.duration > 0
+    ) {
+      setTimeout(() => {
+        hide();
+      }, data.duration);
+    }
+  }
+
+  function hide() {
+    const { overlay, card } = getElements();
+
+    if (!overlay || !card) return;
+
+    overlay.classList.add("opacity-0");
+
+    card.classList.remove(
+      "scale-100",
+      "opacity-100"
+    );
+
+    card.classList.add(
+      "scale-95",
+      "opacity-0"
+    );
+
+    setTimeout(() => {
+      overlay.classList.add("hidden");
+    }, 300);
+  }
+
+  function resolveConfirm(value) {
+    if (callbackEventId) {
+      window.dispatchEvent(
+        new CustomEvent(callbackEventId, {
+          detail: {
+            confirmed: value,
+          },
+        })
+      );
+    }
+
+    callbackEventId = null;
+    hide();
+  }
+
+  function initAlertCard() {
+    if (window.__alertCardInitialized) return;
+    window.__alertCardInitialized = true;
+
+    document.addEventListener("click", (e) => {
+      const target = e.target;
+
+      if (
+        target.closest(
+          "#alert-confirm-btn"
+        )
+      ) {
+        if (isConfirmDialog) {
+          resolveConfirm(true);
+        } else {
+          hide();
+        }
+
+        return;
+      }
+
+      if (
+        target.closest(
+          "#alert-cancel-btn"
+        )
+      ) {
+        resolveConfirm(false);
+        return;
+      }
+
+      const overlay =
+        document.getElementById(
+          "alert-overlay"
+        );
+
+      if (
+        overlay &&
+        target === overlay
+      ) {
+        if (isConfirmDialog) {
+          resolveConfirm(false);
+        } else {
+          hide();
+        }
+      }
+    });
+
+    window.addEventListener(
+      "show-alert",
+      (e) => {
+        show(e.detail);
+      }
+    );
+  }
+
+  initAlertCard();
+
+  document.addEventListener(
+    "DOMContentLoaded",
+    initAlertCard
+  );
+</script>

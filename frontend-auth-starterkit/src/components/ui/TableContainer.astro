@@ -1,0 +1,275 @@
+---
+import Button from "./Button.astro";
+
+interface Props {
+  title: string;
+  addButton?: { id: string; name: string; icon?: string; href?: string };
+  empty?: boolean;
+  serverSide?: boolean;
+  meta?: { page: number; totalPages: number; hasNext: boolean; hasPrev: boolean };
+  searchPlaceholder?: string;
+}
+
+const {
+  title,
+  addButton,
+  empty = false,
+  serverSide = false,
+  meta,
+  searchPlaceholder = "Search...",
+} = Astro.props;
+---
+
+<div
+  class="bg-white border border-gray-300 rounded-xl p-6 dataview-container"
+  data-server-side={serverSide ? "true" : "false"}
+  data-current-page={meta?.page}
+  data-total-pages={meta?.totalPages}
+>
+  <div class="flex items-center justify-between mb-6">
+    <h3 class="text-lg font-semibold text-gray-900">{title}</h3>
+    {
+      addButton && (
+        <Button
+          id={addButton.id}
+          icon={addButton.icon || "fas fa-plus"}
+          href={addButton.href}
+        >
+          {addButton.name}
+        </Button>
+      )
+    }
+  </div>
+
+  { !serverSide && (
+    <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-4">
+      <div class="flex items-center gap-2 text-sm text-gray-600">
+        <span>Show</span>
+        <select class="entriesSelect border border-gray-300 rounded-md px-2 py-1 outline-none focus:ring-1 focus:ring-blue-500">
+          <option value="5">5</option>
+          <option value="10" selected>10</option>
+          <option value="25">25</option>
+        </select>
+        <span>entries</span>
+      </div>
+      <div class="relative">
+        <input
+          type="text"
+          placeholder="Search..."
+          class="searchInput pl-9 pr-3 py-1.5 border border-gray-300 rounded-md w-64 outline-none focus:ring-1 focus:ring-blue-500"
+        />
+        <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm"></i>
+      </div>
+    </div>
+  )}
+
+  {
+    serverSide && (
+      <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-4">
+        <div class="relative w-full md:w-64">
+          <input
+            type="text"
+            placeholder={searchPlaceholder}
+            class="csrSearchInput pl-9 pr-3 py-1.5 border border-gray-300 rounded-md w-full outline-none focus:ring-1 focus:ring-blue-500"
+          />
+          <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm" />
+        </div>
+      </div>
+    )
+  }
+
+  <div class="min-h-[200px] relative">
+    <slot />
+
+    {
+      empty && (
+        <div class="py-20 text-center">
+          <i class="fas fa-box-open text-4xl text-gray-300 mb-3 block" />
+          <p class="text-gray-500">No data available</p>
+        </div>
+      )
+    }
+
+    <div class="csrNoResult hidden py-20 text-center">
+      <i class="fas fa-search text-4xl text-gray-300 mb-3 block" />
+      <p class="text-gray-500">Tidak ada hasil yang cocok</p>
+    </div>
+  </div>
+
+  <div class={`flex flex-col md:flex-row md:items-center md:justify-between gap-4 mt-4 text-sm text-gray-600 ${empty ? "hidden" : ""}`}>
+    <div class="tableInfo">
+      {serverSide && meta && `Showing Page ${meta.page} of ${meta.totalPages}`}
+    </div>
+    <div class="flex items-center gap-1 paginationContainer">
+      {serverSide && meta && (
+        <button id="server-prev" data-page={meta.page - 1} disabled={!meta.hasPrev} class="w-8 h-8 rounded border border-gray-300 bg-white text-gray-600 flex items-center justify-center transition-colors disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-50">
+          <i class="fas fa-chevron-left text-[10px]"></i>
+        </button>
+        <span class="px-2 font-medium">Page {meta.page}</span>
+        <button id="server-next" data-page={meta.page + 1} disabled={!meta.hasNext} class="w-8 h-8 rounded border border-gray-300 bg-white text-gray-600 flex items-center justify-center transition-colors disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-50">
+          <i class="fas fa-chevron-right text-[10px]"></i>
+        </button>
+      )}
+    </div>
+  </div>
+</div>
+
+<script>
+  function setupModularView() {
+    const containers = document.querySelectorAll(".dataview-container");
+
+    containers.forEach((container) => {
+      if (container.dataset.initialized) return;
+      container.dataset.initialized = "true";
+
+      if (container.dataset.serverSide === "true") {
+        setupServerSideEvents(container);
+        return;
+      }
+
+      const searchInput = container.querySelector(".searchInput");
+      const entriesSelect = container.querySelector(".entriesSelect");
+      const infoBox = container.querySelector(".tableInfo");
+      const paginateBox = container.querySelector(".paginationContainer");
+      const items = Array.from(container.querySelectorAll("[data-item]"));
+
+      let currentPage = 1;
+      let filtered = [...items];
+
+      function refresh() {
+        const perPage = parseInt(entriesSelect.value);
+        const total = filtered.length;
+        const pages = Math.ceil(total / perPage);
+
+        if (currentPage > pages) currentPage = pages || 1;
+
+        const start = (currentPage - 1) * perPage;
+        const end = start + perPage;
+
+        items.forEach((el) => el.classList.add("hidden"));
+        filtered.slice(start, end).forEach((el) => el.classList.remove("hidden"));
+
+        if (infoBox) {
+          infoBox.textContent =
+            total > 0
+              ? `Showing ${start + 1} to ${Math.min(end, total)} of ${total} entries`
+              : "";
+        }
+
+        renderBtns(pages);
+      }
+
+      function renderBtns(pages) {
+        if (!paginateBox) return;
+        paginateBox.innerHTML = "";
+        if (pages <= 1) return;
+
+        const btnBase = "w-8 h-8 rounded border border-gray-300 text-xs flex items-center justify-center transition-colors";
+        const btnActive = "bg-blue-600 text-white border-blue-600";
+        const btnNormal = "bg-white text-gray-600 hover:bg-gray-50";
+        const btnDisabled = "bg-white text-gray-300 cursor-not-allowed";
+
+        function makeBtn(label, onClick, disabled = false, active = false) {
+          const btn = document.createElement("button");
+          btn.innerHTML = label;
+          btn.className = `${btnBase} ${active ? btnActive : disabled ? btnDisabled : btnNormal}`;
+          btn.disabled = disabled;
+          if (!disabled) btn.addEventListener("click", onClick);
+          return btn;
+        }
+
+        function makeEllipsis() {
+          const span = document.createElement("span");
+          span.textContent = "...";
+          span.className = "w-8 h-8 flex items-center justify-center text-xs text-gray-400";
+          return span;
+        }
+
+        paginateBox.appendChild(
+          makeBtn('<i class="fas fa-chevron-left text-[10px]"></i>', () => { currentPage--; refresh(); }, currentPage === 1)
+        );
+
+        const pageNums = [];
+        if (pages <= 5) {
+          for (let i = 1; i <= pages; i++) pageNums.push(i);
+        } else {
+          const visible = new Set([1, pages, currentPage, currentPage - 1, currentPage + 1].filter((n) => n >= 1 && n <= pages));
+          const sorted = [...visible].sort((a, b) => a - b);
+
+          let prev = 0;
+          for (const n of sorted) {
+            if (n - prev > 2) pageNums.push("...");
+            else if (n - prev === 2) pageNums.push(prev + 1);
+            pageNums.push(n);
+            prev = n;
+          }
+        }
+
+        for (const item of pageNums) {
+          if (item === "...") {
+            paginateBox.appendChild(makeEllipsis());
+          } else {
+            paginateBox.appendChild(
+              makeBtn(item.toString(), () => { currentPage = item; refresh(); }, false, currentPage === item)
+            );
+          }
+        }
+
+        paginateBox.appendChild(
+          makeBtn('<i class="fas fa-chevron-right text-[10px]"></i>', () => { currentPage++; refresh(); }, currentPage === pages)
+        );
+      }
+
+      searchInput?.addEventListener("input", (e) => {
+        const q = e.target.value.toLowerCase();
+        filtered = items.filter((el) => el.textContent?.toLowerCase().includes(q));
+        currentPage = 1;
+        refresh();
+      });
+
+      entriesSelect?.addEventListener("change", () => {
+        currentPage = 1;
+        refresh();
+      });
+
+      refresh();
+    });
+  }
+
+  function setupServerSideEvents(container) {
+    const prevBtn = container.querySelector("#server-prev");
+    const nextBtn = container.querySelector("#server-next");
+    const searchInput = container.querySelector(".csrSearchInput");
+    const noResultBox = container.querySelector(".csrNoResult");
+    const items = Array.from(container.querySelectorAll("[data-item]"));
+
+    const handleRedirect = (btn) => {
+      if (btn && !btn.hasAttribute("disabled")) {
+        const targetPage = btn.dataset.page;
+        const currentUrl = new URL(window.location.href);
+        currentUrl.searchParams.set("page", targetPage);
+        window.location.href = currentUrl.toString();
+      }
+    };
+
+    prevBtn?.addEventListener("click", () => handleRedirect(prevBtn));
+    nextBtn?.addEventListener("click", () => handleRedirect(nextBtn));
+
+    // 💡 CSR search: filter baris yang sudah ter-render di halaman ini
+    searchInput?.addEventListener("input", (e) => {
+      const q = e.target.value.toLowerCase().trim();
+      let visibleCount = 0;
+
+      items.forEach((el) => {
+        const matches = el.textContent?.toLowerCase().includes(q);
+        el.classList.toggle("hidden", !matches);
+        if (matches) visibleCount++;
+      });
+
+      noResultBox?.classList.toggle("hidden", visibleCount > 0 || q === "");
+    });
+  }
+
+  setupModularView();
+  document.addEventListener("DOMContentLoaded", setupModularView);
+</script>

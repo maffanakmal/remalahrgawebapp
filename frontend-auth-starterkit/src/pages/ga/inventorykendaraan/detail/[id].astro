@@ -1,0 +1,292 @@
+---
+import DashboardLayout from "../../../../layouts/DashboardLayout.astro";
+import AlertCard from "../../../../components/ui/AlertCard.astro";
+import { ROUTES } from "../../../../constants/routes";
+
+import { inventoryKendaraanApi } from "../../../../services/api/inventorykendaraan.api";
+import { usersApi } from "../../../../services/api/users.api";
+import { formatDate } from "../../../../helpers/dom";
+
+const { id } = Astro.params;
+const cookie = Astro.request.headers.get("cookie") ?? "";
+
+let reportDetail = null;
+let vehicleDetail = null;
+let userDetail = null;
+
+try {
+  const reportingRes = await inventoryKendaraanApi.ga.getReportingById(id, { serverCookie: cookie });
+  reportDetail = reportingRes?.data ?? null;
+
+  if (reportDetail) {
+    const platNumber = reportDetail.plate_number;
+    const userId = reportDetail.user_id;
+
+    const [vehicleRes, userRes] = await Promise.all([
+      platNumber ? inventoryKendaraanApi.ga.getKendaraanByPlateNumber(platNumber, { serverCookie: cookie }) : null,
+      userId ? usersApi.ga.getUserById(userId, { serverCookie: cookie }) : null
+    ]);
+
+    vehicleDetail = vehicleRes?.data ?? null;
+    userDetail = userRes?.data ?? null;
+  }
+} catch (error) {
+  console.error("Astro Server Fetch Error (Inventory Details):", error);
+}
+
+const detail = reportDetail ? {
+  ...reportDetail,
+  report_id: reportDetail.report_id || "—",
+  vehicle_inventory_date: reportDetail.vehicle_inventory_date ? formatDate(reportDetail.vehicle_inventory_date) : "—",
+  username: userDetail?.username || reportDetail.user_id || "—",
+  nik: userDetail?.nik || "—",
+  plate_number: reportDetail.plate_number || "—",
+  car_brand: vehicleDetail?.car_brand || "—",
+  car_type: vehicleDetail?.vehicle_type || "—",
+  vehicle_color: reportDetail.vehicle_color || "—",
+  frame_number: vehicleDetail?.frame_number || "—",
+  machine_number: vehicleDetail?.machine_number || "—",
+  pic: vehicleDetail?.pic || "—",
+  job_position: vehicleDetail?.job_position || "—",
+  department: vehicleDetail?.department || "—",
+  stnk_owner: vehicleDetail?.stnk_owner || "—",
+  stnk_date: reportDetail.stnk_date ? formatDate(reportDetail.stnk_date) : "—", // Memperbaiki parameter format ke reportDetail / vehicleDetail
+  vehicle_milage: reportDetail.vehicle_milage !== undefined ? Number(reportDetail.vehicle_milage).toLocaleString('id-ID') : "—",
+  physical_condition: reportDetail.physical_condition || "—",
+  equipment_detail: reportDetail.equipment_detail || "Tidak ada detail perlengkapan.",
+} : null;
+
+const backRoute = ROUTES.Pengajuan?.children?.InventoryKendaraan?.path || "/pengajuan/inventory-kendaraan";
+---
+
+<DashboardLayout title="Detail Inventory Kendaraan">
+  <AlertCard />
+
+  <div class="bg-white rounded-xl border border-gray-200">
+    <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="w-8 h-8 bg-blue-50 rounded-lg flex items-center justify-center">
+          <i class="fas fa-car text-blue-600 text-sm"></i>
+        </div>
+        <h2 class="text-sm font-semibold text-gray-800">Detail Inventory Kendaraan</h2>
+      </div>
+      <div class="p-2 rounded-md hover:bg-gray-100 transition-all">
+        <a
+          href={backRoute}
+          class="text-gray-600 hover:text-gray-700 font-semibold transition-all"
+        >
+          <i class="fa-solid fa-arrow-left"></i>
+        </a>
+      </div>
+    </div>
+
+    <div id="state-content" class="flex p-6 flex-col gap-6" data-report-id={id}>
+      {
+        !detail ? (
+          <div class="py-8 text-center">
+            <p class="text-sm text-red-500 font-medium">Data laporan tidak ditemukan atau gagal dimuat.</p>
+          </div>
+        ) : (
+          <>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div class="bg-gray-50 rounded-lg px-4 py-3 border border-gray-200">
+                <p class="text-xs text-gray-500 mb-1">Report ID</p>
+                <p id="field-report-id" class="text-sm font-semibold text-gray-800">
+                  {detail.report_id}
+                </p>
+              </div>
+              <div class="bg-gray-50 rounded-lg px-4 py-3 border border-gray-200">
+                <p class="text-xs text-gray-500 mb-1">Tanggal Report</p>
+                <p id="field-tanggal-report" class="text-sm font-semibold text-gray-800">
+                  {detail.vehicle_inventory_date}
+                </p>
+              </div>
+              <div class="bg-gray-50 rounded-lg px-4 py-3 border border-gray-200">
+                <p class="text-xs text-gray-500 mb-1">Petugas</p>
+                <p id="field-petugas" class="text-sm font-semibold text-gray-800">
+                  {detail.username}
+                </p>
+              </div>
+            </div>
+
+            <div class="border border-gray-200 rounded-xl overflow-hidden">
+              <div class="px-4 py-3 bg-gray-50 border-b border-gray-100">
+                <p class="text-sm font-semibold text-gray-700">
+                  <i class="fas fa-id-card text-gray-400 mr-2 text-xs"></i>
+                  Identitas Kendaraan
+                </p>
+              </div>
+              <table class="w-full text-sm">
+                <tbody>
+                  <tr class="border-b border-gray-100">
+                    <td class="px-4 py-3 text-gray-500 w-2/5">Plat Nomor</td>
+                    <td id="field-plat-nomor" class="px-4 py-3 text-gray-800 font-semibold tracking-widest uppercase">
+                      {detail.plate_number}
+                    </td>
+                  </tr>
+                  <tr class="border-b border-gray-100">
+                    <td class="px-4 py-3 text-gray-500">Merk Kendaraan</td>
+                    <td id="field-merk-kendaraan" class="px-4 py-3 text-gray-800">
+                      {detail.car_brand}
+                    </td>
+                  </tr>
+                  <tr class="border-b border-gray-100">
+                    <td class="px-4 py-3 text-gray-500">Jenis Kendaraan</td>
+                    <td id="field-jenis-kendaraan" class="px-4 py-3 text-gray-800">
+                      {detail.car_type}
+                    </td>
+                  </tr>
+                  <tr class="border-b border-gray-100">
+                    <td class="px-4 py-3 text-gray-500">Warna</td>
+                    <td id="field-warna" class="px-4 py-3 text-gray-800">
+                      {detail.vehicle_color}
+                    </td>
+                  </tr>
+                  <tr class="border-b border-gray-100">
+                    <td class="px-4 py-3 text-gray-500">No. Rangka</td>
+                    <td id="field-no-rangka" class="px-4 py-3 text-gray-800 uppercase">
+                      {detail.frame_number}
+                    </td>
+                  </tr>
+                  <tr>
+                    <td class="px-4 py-3 text-gray-500">No. Mesin</td>
+                    <td id="field-no-mesin" class="px-4 py-3 text-gray-800 uppercase">
+                      {detail.machine_number}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div class="border border-gray-200 rounded-xl overflow-hidden">
+              <div class="px-4 py-3 bg-gray-50 border-b border-gray-100">
+                <p class="text-sm font-semibold text-gray-700">
+                  <i class="fas fa-user text-gray-400 mr-2 text-xs"></i>
+                  Kepemilikan & Penugasan
+                </p>
+              </div>
+              <table class="w-full text-sm">
+                <tbody>
+                  <tr class="border-b border-gray-100">
+                    <td class="px-4 py-3 text-gray-500 w-2/5">PIC Kendaraan</td>
+                    <td id="field-pic" class="px-4 py-3 text-gray-800">
+                      {detail.pic}
+                    </td>
+                  </tr>
+                  <tr class="border-b border-gray-100">
+                    <td class="px-4 py-3 text-gray-500 w-2/5">NIK</td>
+                    <td id="field-nik" class="px-4 py-3 text-gray-800">
+                      {detail.nik}
+                    </td>
+                  </tr>
+                  <tr class="border-b border-gray-100">
+                    <td class="px-4 py-3 text-gray-500">Job/Posisi</td>
+                    <td id="field-job-pos" class="px-4 py-3 text-gray-800">
+                      {detail.job_position}
+                    </td>
+                  </tr>
+                  <tr class="border-b border-gray-100">
+                    <td class="px-4 py-3 text-gray-500">Departemen</td>
+                    <td id="field-departemen" class="px-4 py-3 text-gray-800">
+                      {detail.department}
+                    </td>
+                  </tr>
+                  <tr class="border-b border-gray-100">
+                    <td class="px-4 py-3 text-gray-500">Atas Nama STNK</td>
+                    <td id="field-atas-nama-stnk" class="px-4 py-3 text-gray-800">
+                      {detail.stnk_owner}
+                    </td>
+                  </tr>
+                  <tr>
+                    <td class="px-4 py-3 text-gray-500">Tanggal STNK</td>
+                    <td id="field-tanggal-stnk" class="px-4 py-3 text-gray-800">
+                      {detail.stnk_date}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div class="border border-gray-200 rounded-xl overflow-hidden">
+              <div class="px-4 py-3 bg-gray-50 border-b border-gray-100">
+                <p class="text-sm font-semibold text-gray-700">
+                  <i class="fas fa-clipboard-check text-gray-400 mr-2 text-xs"></i>
+                  Kondisi Kendaraan
+                </p>
+              </div>
+              <table class="w-full text-sm">
+                <tbody>
+                  <tr class="border-b border-gray-100">
+                    <td class="px-4 py-3 text-gray-500 w-2/5">KM Kendaraan</td>
+                    <td class="px-4 py-3">
+                      <div class="flex items-center gap-2">
+                        <span id="field-km" class="text-gray-800 font-semibold">{detail.vehicle_milage}</span>
+                        <span class="text-gray-400 text-xs">km</span>
+                      </div>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td class="px-4 py-3 text-gray-500">Kondisi Fisik</td>
+                    <td id="field-kondisi-fisik" class="px-4 py-3 text-gray-800">
+                      {detail.physical_condition}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+
+              <div class="border-t border-gray-100 px-4 py-3 bg-white">
+                <p class="text-sm font-semibold text-gray-500 mb-2">Detail Perlengkapan</p>
+                <p id="field-detail-perlengkapan" class="text-sm text-gray-800 leading-relaxed whitespace-pre-line">
+                  {detail.equipment_detail}
+                </p>
+              </div>
+            </div>
+
+            <div class="flex justify-end gap-2 pt-1">
+              <button
+                id="btn-generate-pdf"
+                class="flex items-center gap-2 px-5 py-2 border border-gray-200 text-sm font-medium rounded-lg hover:bg-gray-100 transition-all"
+              >
+                Generate Reporting
+              </button>
+              <button
+                id="btn-edit"
+                class="flex items-center gap-2 px-5 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-all"
+              >
+                Edit
+              </button>
+            </div>
+          </>
+        )
+      }
+    </div>
+  </div>
+</DashboardLayout>
+
+<script>
+  import "../../../../scripts/global.js";
+
+  function setupClientActions() {
+    const btnPdf = document.getElementById("btn-generate-pdf");
+    const btnEdit = document.getElementById("btn-edit");
+    const contentWrapper = document.getElementById("state-content");
+
+    if (!contentWrapper) return;
+    const reportId = contentWrapper.dataset.reportId;
+
+    // Aktifkan kembali Event Listener Aksi Klik
+    // if (btnEdit && reportId) {
+    //   btnEdit.addEventListener("click", () => {
+    //     window.location.href = `/pengajuan/inventory-kendaraan/${reportId}/edit`;
+    //   });
+    // }
+
+    // if (btnPdf && reportId) {
+    //   btnPdf.addEventListener("click", () => {
+    //     window.open(`/api/ga/inventory-kendaraan/${reportId}/pdf`, "_blank");
+    //   });
+    // }
+  }
+
+  setupClientActions();
+</script>

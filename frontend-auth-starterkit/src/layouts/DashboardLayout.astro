@@ -1,0 +1,235 @@
+---
+import "../styles/global.css";
+import NavBar from "../components/shared/dashboard/NavBar.astro";
+import SideBar from "../components/shared/dashboard/SideBar.astro";
+import BottomNav from "../components/shared/dashboard/BottomNav.astro";
+import AlertCard from "../components/ui/AlertCard.astro";
+
+interface Props {
+  title?: string;
+  description?: string;
+}
+
+const { title = "Remala HRGA", description = "Web App Internal HRGA Remala" } =
+  Astro.props;
+
+import { usersApi } from "../services/api/users.api.js";
+
+const cookieHeader = Astro.request.headers.get("cookie") ?? "";
+
+const user = await usersApi
+  .me({
+    serverCookie: cookieHeader, // 💡 Tips: Gunakan nama 'serverCookie' agar selaras dengan client.js
+    headers: {
+      cookie: cookieHeader,
+    },
+  })
+  .catch(() => ({
+    data: { username: "", email: "" },
+  }));
+---
+
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <link rel="icon" type="image/png" href="/images/logo_ra.png" />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+    href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap"
+    rel="stylesheet"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+      integrity="sha512-iecdLmaskl7CVkqkXNQ/ZH/XLlvWZOJyj7Yy7tcenmpD1ypASozpmT/E0iPtmFIB46ZmdtAc9eNBvH0H/ZpiBw=="
+      crossorigin="anonymous"
+      referrerpolicy="no-referrer"
+    />
+    <link
+      href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.tailwindcss.min.css" />
+  </head>
+
+  <body class="bg-gray-50 font-[Poppins]">
+    <AlertCard />
+
+    <div class="hidden md:block">
+      <SideBar />
+    </div>
+
+    <NavBar username={user?.data?.username} email={user?.data?.email} />
+
+    <main
+      id="mainContent"
+      class="min-h-screen px-4 md:px-6 pb-20 md:pb-6 transition-all duration-300"
+      style="padding-top: 80px;"
+    >
+      <slot />
+    </main>
+
+    <BottomNav />
+
+    <script
+      src="https://code.jquery.com/jquery-3.7.1.min.js"
+      integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo="
+      crossorigin="anonymous"></script>
+    <script
+      src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"
+    ></script>
+    <script is:inline src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+    <script is:inline src="https://cdn.datatables.net/1.13.6/js/dataTables.tailwindcss.min.js"></script>
+
+    <script
+      define:vars={{
+        isLoggedIn: !!user?.data?.user_id,
+      }}
+    >
+      window.isLoggedIn = isLoggedIn;
+    </script>
+
+    <script>
+      import { authApi } from "../services/api/auth.api.js";
+      import { showConfirm, showSuccess, showError } from "../helpers/alert.js";
+
+      const SIDEBAR_W = 256;
+
+      let sidebarOpen = true;
+
+      const isDesktop = () => window.innerWidth >= 768;
+
+      function getEls() {
+        return {
+          sidebar: document.getElementById("sidebar"),
+          topbar: document.getElementById("topbar"),
+          mainContent: document.getElementById("mainContent"),
+          overlay: document.getElementById("sidebarOverlay"),
+          profileMenu: document.getElementById("profileMenu"),
+        };
+      }
+
+      function openSidebar() {
+        const { sidebar, topbar, mainContent, overlay } = getEls();
+
+        sidebarOpen = true;
+
+        sidebar?.classList.remove("-translate-x-full");
+
+        if (isDesktop()) {
+          topbar?.style.setProperty("left", `${SIDEBAR_W}px`);
+
+          mainContent?.style.setProperty("margin-left", `${SIDEBAR_W}px`);
+
+          overlay?.classList.add("hidden");
+        } else {
+          topbar?.style.setProperty("left", "0");
+
+          mainContent?.style.setProperty("margin-left", "0");
+
+          overlay?.classList.remove("hidden");
+        }
+      }
+
+      function closeSidebar() {
+        const { sidebar, topbar, mainContent, overlay } = getEls();
+
+        sidebarOpen = false;
+
+        sidebar?.classList.add("-translate-x-full");
+
+        topbar?.style.setProperty("left", "0");
+
+        mainContent?.style.setProperty("margin-left", "0");
+
+        overlay?.classList.add("hidden");
+      }
+
+      function applyLayout() {
+        if (isDesktop()) {
+          openSidebar();
+        } else {
+          closeSidebar();
+        }
+      }
+
+      function initDashboardLayout() {
+        if (window.__dashboardInitialized) return;
+
+        window.__dashboardInitialized = true;
+
+        window.addEventListener("resize", applyLayout);
+
+        document.addEventListener("click", async (e) => {
+          const target = e.target;
+
+          // Toggle Sidebar
+          if (target.closest("#sidebarToggle")) {
+            sidebarOpen ? closeSidebar() : openSidebar();
+
+            return;
+          }
+
+          // Overlay
+          if (target.closest("#sidebarOverlay")) {
+            closeSidebar();
+            return;
+          }
+
+          // Profile Menu
+          if (target.closest("#profileBtn")) {
+            e.stopPropagation();
+
+            getEls().profileMenu?.classList.toggle("hidden");
+
+            return;
+          }
+
+          // Logout
+          if (target.closest("#logoutBtn")) {
+            e.preventDefault();
+
+            const confirmed = await showConfirm(
+              "Apakah Anda yakin ingin logout?",
+              "Konfirmasi Logout",
+              "Ya, Logout",
+              "Batal",
+            );
+
+            if (!confirmed) return;
+
+            try {
+              await authApi.logout();
+
+              await showSuccess("Anda berhasil logout.", "Logout Berhasil");
+
+              window.location.href = "/auth/login";
+            } catch {
+              await showError("Terjadi kesalahan saat logout.", "Logout Gagal");
+            }
+
+            return;
+          }
+
+          // Klik luar profile
+          getEls().profileMenu?.classList.add("hidden");
+        });
+      }
+
+      // Pertama kali load
+      initDashboardLayout();
+      applyLayout();
+
+      // SPA Navigation
+      document.addEventListener("DOMContentLoaded", () => {
+        applyLayout();
+      });
+    </script>
+  </body>
+</html>

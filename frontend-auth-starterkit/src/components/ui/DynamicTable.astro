@@ -1,0 +1,144 @@
+---
+// src/components/ui/DynamicTable.astro
+interface Column {
+  header: string;
+  key: string;
+  type?: "text" | "badge" | "currency";
+}
+
+interface Props {
+  columns: Column[];
+  data: any[];
+  actions?: {
+    detail?: boolean;
+    edit?: boolean;
+    delete?: boolean;
+  };
+  idKey?: string; // Key mana yang jadi ID (misal: 'product_id' atau 'id')
+  tableId?: string;
+  serverSide?: boolean;
+}
+
+const {
+  columns,
+  data,
+  actions = { detail: true, edit: true, delete: true },
+  idKey = "id",
+  tableId = "dynamicTable",
+  serverSide = false,
+} = Astro.props;
+
+// Fungsi helper untuk badge status (jika ada type "badge")
+const getBadgeClass = (value: string) => {
+  const v = value.toLowerCase();
+  if (["delivered", "active", "completed", "success", "good", "accepted", "approved"].includes(v))
+    return "bg-green-100 text-green-700 border border-green-300";
+  if (["shipped", "pending", "processing"].includes(v))
+    return "bg-yellow-100 text-yellow-700 border border-yellow-300";
+  if (["cancelled", "failed", "inactive", "maintenance", "rejected"].includes(v))
+    return "bg-red-100 text-red-700 border border-red-300";
+  return "bg-gray-100 text-gray-700";
+};
+---
+
+<div class="overflow-x-auto">
+  <table id={tableId} class="w-full">
+    <thead>
+      <tr class="border-b border-gray-200">
+        {
+          columns.map((col) => (
+            <th class="text-left py-3 px-2 text-sm font-semibold text-gray-700">
+              {col.header}
+            </th>
+          ))
+        }
+        {
+          actions && (
+            <th class="text-left py-3 px-2 text-sm font-semibold text-gray-700">
+              Action
+            </th>
+          )
+        }
+      </tr>
+    </thead>
+    <tbody>
+      {
+        data.length > 0
+          ? data.map((row) => (
+              <tr
+                  class:list={[
+                    "border-b border-gray-50 hover:bg-gray-50 transition-colors",
+                    { hidden: !serverSide }
+                  ]}
+                  data-item={!serverSide}
+                >
+                {columns.map((col) => (
+                  <td class="py-3 px-2 text-sm text-gray-600">
+                    {col.type === "badge" ? (
+                      <span
+                        class={`${getBadgeClass(row[col.key])} px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider`}
+                      >
+                        {row[col.key]}
+                      </span>
+                    ) : col.type === "stnkbadge" ? (
+                      /* Perbaikan di sini: Ambil .className dan .label */
+                      (() => {
+                        const stnk = getSTNKBadgeClass(row[col.key]);
+                        return (
+                          <span
+                            class={`${stnk.className} px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider`}
+                          >
+                            {stnk.label}
+                          </span>
+                        );
+                      })()
+                    ) : col.type === "currency" ? (
+                      <span class="font-semibold">{row[col.key]}</span>
+                    ) : (
+                      row[col.key]
+                    )}
+                  </td>
+                ))}
+
+                {/* Actions Column */}
+                <td class="py-3 px-2 text-sm">
+                  <div class="flex gap-1">
+                    {actions.detail && (
+                      <button
+                        class="p-2 text-blue-600 hover:bg-blue-50 rounded-md btn-action"
+                        data-id={row[idKey]}
+                        data-action="detail"
+                        title="Detail"
+                      >
+                        <i class="fas fa-eye" />
+                      </button>
+                    )}
+                    {actions.edit && (
+                      <button
+                        class="p-2 text-yellow-600 hover:bg-yellow-50 rounded-md btn-action"
+                        data-id={row[idKey]}
+                        data-action="edit"
+                        title="Edit"
+                      >
+                        <i class="fas fa-pen" />
+                      </button>
+                    )}
+                    {actions.delete && (
+                      <button
+                        class="p-2 text-red-600 hover:bg-red-50 rounded-md btn-action"
+                        data-id={row[idKey]}
+                        data-action="delete"
+                        title="Delete"
+                      >
+                        <i class="fas fa-trash" />
+                      </button>
+                    )}
+                  </div>
+                </td>
+              </tr>
+            ))
+          : null
+      }
+    </tbody>
+  </table>
+</div>

@@ -1,0 +1,53 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+import { ROUTES } from "../constants/routes.js";
+---
+
+<BaseLayout>
+  <div class="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6">
+    
+    <div class="text-center mb-10 max-w-md">
+      <h1 class="text-2xl font-bold text-slate-800 tracking-tight sm:text-3xl">
+        Selamat Datang
+      </h1>
+      <p class="text-slate-500 text-md mt-2">
+        Silakan pilih layanan atau formulir di bawah ini untuk melanjutkan.
+      </p>
+    </div>
+
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-6 w-full max-w-2xl">
+      <a href={ROUTES.Forms.children.BelanjaBulanan.path} class="group relative bg-white p-6 rounded-2xl shadow-sm border border-slate-100 hover:border-blue-500/30 transition-all duration-300 flex flex-col justify-between overflow-hidden">
+        <div>
+          <div class="w-12 h-12 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center mb-4 group-hover:bg-blue-600 group-hover:text-white transition-colors duration-300">
+            <i class="fa-solid fa-cart-shopping"></i>
+          </div>
+          <h3 class="text-lg font-bold text-slate-800 group-hover:text-blue-600 transition-colors duration-300">
+            Request Belanja Bulanan
+          </h3>
+          <p class="text-slate-500 text-sm mt-1">
+            Ajukan kebutuhan belanja operasional dan bulanan divisi di sini.
+          </p>
+        </div>
+        <div class="mt-6 flex items-center text-sm font-medium text-blue-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+          Buka Form
+        </div>
+      </a>
+      <a href={ROUTES.Login.path} class="group relative bg-white p-6 rounded-2xl shadow-sm border border-slate-100 hover:border-blue-500/30 transition-all duration-300 flex flex-col justify-between overflow-hidden">
+        <div>
+          <div class="w-12 h-12 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center mb-4 group-hover:bg-blue-600 group-hover:text-white transition-colors duration-300">
+            <i class="fa-solid fa-car"></i>
+          </div>
+          <h3 class="text-lg font-bold text-slate-800 group-hover:text-blue-600 transition-colors duration-300">
+            Inventory Kendaraan
+          </h3>
+          <p class="text-slate-500 text-sm mt-1">
+            Pantau manajemen kendaraan operasional dan kebutuhan perawatan di sini.
+          </p>
+        </div>
+        <div class="mt-6 flex items-center text-sm font-medium text-blue-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+          Buka Form
+        </div>
+      </a>
+    </div>
+  </div>
+</BaseLayout>

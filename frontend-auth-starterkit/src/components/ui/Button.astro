@@ -1,0 +1,63 @@
+---
+// src/components/ui/Button.astro
+interface Props {
+  id?: string;
+  type?: "button" | "submit";
+  variant?: "primary" | "secondary" | "danger" | "ghost";
+  size?: "sm" | "md" | "lg";
+  icon?: string;
+  className?: string;
+  href?: string;
+  target?: "_blank" | "_self";
+}
+
+const {
+  id,
+  type = "button",
+  variant = "primary",
+  size = "md",
+  icon,
+  className = "",
+  href,
+  target = "_self",
+} = Astro.props;
+
+const variants = {
+  primary: "bg-blue-600 text-white hover:bg-blue-700 shadow-sm",
+  secondary: "bg-gray-100 text-gray-700 hover:bg-gray-200",
+  danger: "bg-red-600 text-white hover:bg-red-700",
+  ghost: "bg-transparent text-gray-600 hover:bg-gray-100",
+};
+
+const sizes = {
+  sm: "px-3 py-1.5 text-xs",
+  md: "px-4 py-2 text-sm",
+  lg: "px-6 py-3 text-base",
+};
+
+const baseClasses =
+  "inline-flex items-center justify-center font-medium rounded-md transition-colors duration-200 focus:outline-none";
+
+const classList = [baseClasses, variants[variant], sizes[size], className];
+---
+
+{href ? (
+  <a
+    id={id}
+    href={href}
+    target={target}
+    class:list={classList}
+  >
+    {icon && <i class={`${icon} ${Astro.slots.has("default") ? "mr-2" : ""}`} />}
+    <slot />
+  </a>
+) : (
+  <button
+    id={id}
+    type={type}
+    class:list={classList}
+  >
+    {icon && <i class={`${icon} ${Astro.slots.has("default") ? "mr-2" : ""}`} />}
+    <slot />
+  </button>
+)}

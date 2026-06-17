@@ -1,0 +1,105 @@
+---
+import { ROUTES } from "../../../constants/routes.js";
+
+const currentPath = Astro.url.pathname;
+
+const mainRoutes = Object.values(ROUTES).slice(4, 6);
+---
+
+<nav
+  class="fixed bottom-0 left-0 right-0 h-16 bg-white border-t border-gray-200 z-50 flex items-center justify-around md:hidden"
+>
+  {
+    mainRoutes.map((route) => {
+      const childrenArray = route.children ? Object.values(route.children) : [];
+
+      const isActive = route.children
+        ? childrenArray.some((child) => currentPath.startsWith(child.path))
+        : currentPath === route.path;
+
+      return route.path ? (
+        <a
+          href={route.path}
+          class:list={[
+            "flex flex-col items-center justify-center gap-1 flex-1 h-full text-xs transition-colors",
+            isActive
+              ? "text-blue-600 font-medium"
+              : "text-gray-500 hover:text-gray-900",
+          ]}
+        >
+          <i class:list={[route.icon, "text-lg"]} />
+        </a>
+      ) : (
+        <div class="relative flex-1 h-full flex items-center justify-center">
+          <button
+            class:list={[
+              "flex flex-col items-center justify-center gap-1 h-full w-full transition-colors",
+              isActive
+                ? "text-blue-600 font-medium"
+                : "text-gray-500 hover:text-gray-900",
+            ]}
+            data-dropdown={route.name}
+          >
+            <i class:list={[route.icon, "text-lg"]} />
+          </button>
+
+          <div
+            class="hidden absolute bottom-18 right-4 bg-white border border-gray-200 rounded-lg shadow-lg w-56 py-2 dropdown-menu"
+            data-menu={route.name}
+          >
+            {childrenArray.map((child) => (
+              <a
+                href={child.path}
+                class:list={[
+                  "flex items-center gap-3 px-4 py-3 text-sm",
+                  currentPath.startsWith(child.path)
+                    ? "bg-blue-50 text-blue-600 font-medium"
+                    : "text-gray-700 hover:bg-gray-50",
+                ]}
+              >
+                <i class:list={[child.icon, "w-4 text-center"]} />
+                <span>{child.name}</span>
+              </a>
+            ))}
+          </div>
+        </div>
+      );
+    })
+  }
+</nav>
+
+<script>
+  function initDropdown() {
+    if (window.__dropdownInitialized) return;
+    window.__dropdownInitialized = true;
+
+    document.addEventListener("click", (e) => {
+      const target = e.target;
+
+      const button = target.closest("[data-dropdown]");
+
+      if (button) {
+        const name = button.dataset.dropdown;
+
+        document.querySelectorAll(".dropdown-menu").forEach((menu) => {
+          if (menu.dataset.menu === name) {
+            menu.classList.toggle("hidden");
+          } else {
+            menu.classList.add("hidden");
+          }
+        });
+
+        return;
+      }
+
+      if (!target.closest(".dropdown-menu")) {
+        document.querySelectorAll(".dropdown-menu").forEach((menu) => {
+          menu.classList.add("hidden");
+        });
+      }
+    });
+  }
+
+  initDropdown();
+  document.addEventListener("DOMContentLoaded", initDropdown);
+</script>

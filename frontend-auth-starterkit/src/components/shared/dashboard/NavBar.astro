@@ -1,0 +1,90 @@
+---
+import ProfileDropdown from './ProfileDropdown.astro';
+
+interface Props {
+  username: string;
+  email: string;
+}
+
+const { username, email } = Astro.props;
+---
+<nav
+  class="fixed top-0 right-0 h-16 bg-white border-b border-gray-200 z-50 flex items-center justify-between px-4 transition-all duration-300"
+  id="topbar"
+  style="left: 256px;"
+>
+  <button
+    id="sidebarToggle" class="hidden md:flex items-center justify-center w-9 h-9 rounded-md hover:bg-gray-100"
+  >
+    <i class="fas fa-bars text-gray-600" />
+  </button>
+
+  <a href="/" class="flex md:hidden items-center">
+    <img src="/images/logo_ra.png" alt="Logo" class="h-8 w-auto" />
+  </a>
+
+  <div class="flex items-center gap-3">
+    <button
+      class="px-2 py-2 rounded-sm hover:bg-gray-100 text-gray-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+      id="refreshBtn"
+    >
+      <span id="refreshText"><i class="fa-solid fa-sync"></i></span>
+    </button>
+    <ProfileDropdown username={username} email={email} />
+  </div>
+</nav>
+
+<script>
+  function initRefreshButton() {
+    const refreshPage = document.getElementById("refreshBtn");
+    const refreshText = document.getElementById("refreshText");
+
+    if (!refreshPage || !refreshText) return;
+
+    if (refreshPage.dataset.initialized) return;
+    refreshPage.dataset.initialized = "true";
+
+    if (sessionStorage.getItem("refreshCooldown")) {
+      setCooldown(refreshPage, refreshText);
+    }
+
+    refreshPage.addEventListener("click", () => {
+      sessionStorage.setItem("refreshCooldown", "true");
+      location.reload();
+    });
+  }
+
+  function setCooldown(refreshPage, refreshText) {
+    refreshPage.disabled = true;
+
+    let secondsLeft = 5;
+
+    refreshText.innerText = `Wait (${secondsLeft}s)`;
+
+    const interval = setInterval(() => {
+      secondsLeft--;
+
+      refreshText.innerText = `Wait (${secondsLeft}s)`;
+
+      if (secondsLeft <= 0) {
+        clearInterval(interval);
+
+        refreshPage.disabled = false;
+
+        refreshText.innerHTML =
+          '<i class="fa-solid fa-sync"></i>';
+
+        sessionStorage.removeItem(
+          "refreshCooldown"
+        );
+      }
+    }, 1000);
+  }
+
+  initRefreshButton();
+
+  document.addEventListener(
+    "DOMContentLoaded",
+    initRefreshButton
+  );
+</script>
